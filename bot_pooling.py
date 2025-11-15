@@ -4,15 +4,19 @@ import aiomax
 from dotenv import load_dotenv
 
 from rag_bot import answer_question
-from config import TELEGRAM_BOT_USERNAME as BOT_USERNAME
 
 
 load_dotenv("keys.env")
 
 
 TOKEN = os.getenv("MAX_VK_BOT_TOKEN")
+BOT_USERNAME = os.getenv("MAX_VK_BOT_USERNAME")
+
 if not TOKEN:
     raise RuntimeError("MAX_VK_BOT_TOKEN not found in keys.env")
+
+if not BOT_USERNAME:
+    raise RuntimeError("MAX_VK_BOT_USERNAME not found in keys.env")
 
 
 bot = aiomax.Bot(TOKEN, default_format="markdown")

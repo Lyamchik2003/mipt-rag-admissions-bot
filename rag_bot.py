@@ -2,11 +2,11 @@ from multiprocessing import context
 import os
 from config import OPENAI_API_KEY, OPENAI_API_BASE
 
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
-from langchain.vectorstores import FAISS
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.vectorstores.faiss import FAISS
+from langchain_classic.chains import RetrievalQA
+from langchain_classic.prompts import PromptTemplate
 from config import OPENAI_API_KEY, OPENAI_API_BASE
 from dotenv import load_dotenv
 from datetime import datetime
@@ -183,7 +183,9 @@ def answer_question(question: str) -> str:
 Задайте вопрос по этим темам!"""
     
     # 3. Получаем релевантные документы и генерируем ответ
-    docs = retriever.get_relevant_documents(question)
+    # В новых версиях LangChain retriever реализует протокол Runnable,
+    # поэтому вместо get_relevant_documents используем invoke
+    docs = retriever.invoke(question)
     context_parts = []
     for d in docs:
         context_parts.append(d.page_content)

@@ -10,7 +10,7 @@ from langchain.vectorstores import FAISS
 from config import OPENAI_API_KEY, OPENAI_API_BASE
 
 # 1. Укажите путь к вашему файлу с чанками
-INPUT_PATH = Path("data/responses.json")  # или data/rag_knowledge_base.jsonl, если JSONL
+INPUT_PATH = Path("data/rules2025.json")  # или data/rag_knowledge_base.jsonl, если JSONL
 
 # 2. Папка, куда сохранится индекс
 INDEX_DIR = Path("faiss_index")
