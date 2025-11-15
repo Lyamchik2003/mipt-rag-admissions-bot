@@ -112,7 +112,43 @@ Copy-Item .\faiss_index_master .\faiss_index -Recurse
 
 При проблемах совместимости рекомендуем также удалить старые папки индексов (`faiss_index*`) и собрать заново.
 
-## 6) Частые проблемы и их решение
+## 6) Docker: быстрый запуск
+
+Быстрый способ упаковать и запустить бота — Docker/Compose. Секреты не встраиваем в образ, а передаём через `keys.env`.
+
+1. Собрать локальный образ:
+
+```powershell
+docker build -t max-rag-bot .
+```
+
+2. Запустить контейнер напрямую:
+
+```powershell
+docker run --rm --name max-rag-bot `
+  --env-file keys.env `
+  -v ${PWD}/data:/app/data `
+  -v ${PWD}/faiss_index:/app/faiss_index `
+  -v ${PWD}/faiss_index_bachelor:/app/faiss_index_bachelor `
+  -v ${PWD}/faiss_index_master:/app/faiss_index_master `
+  max-rag-bot
+```
+
+или через Docker Compose:
+
+```powershell
+docker compose up --build -d
+```
+
+Примечания:
+- Убедитесь, что локальные папки индексов существуют и смонтированы (см. `docker-compose.yml`).
+- При необходимости пересоберите индексы внутри контейнера:
+
+```powershell
+docker compose run --rm bot python setup_rag.py
+```
+
+## 7) Частые проблемы и их решение
 
 - «Не найден токен/username бота» — проверьте, что `keys.env` лежит в корне и заполнен, проверьте орфографию переменных.
 - «Не найден FAISS-индекс» — убедитесь, что папка `faiss_index` существует. При необходимости скопируйте один из собранных индексов (`faiss_index_bachelor` или `faiss_index_master`) в `faiss_index` (см. пример выше).
