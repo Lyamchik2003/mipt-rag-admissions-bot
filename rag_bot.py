@@ -23,15 +23,45 @@ embeddings = OpenAIEmbeddings(
     openai_api_base=OPENAI_API_BASE
 )
 
-# Загрузка FAISS-индекса с разрешением десериализации
-vectorstore = FAISS.load_local(
+# Загрузка FAISS-индекса по умолчанию (историческая база)
+_default_vectorstore = FAISS.load_local(
     'faiss_index',
     embeddings,
     allow_dangerous_deserialization=True
 )
 
-# Настройка Retriever
-retriever = vectorstore.as_retriever(search_kwargs={'k': 7})
+# Настройка Retriever по умолчанию
+retriever = _default_vectorstore.as_retriever(search_kwargs={'k': 7})
+
+# Кэш для разных ступеней образования
+_retrievers_cache = {}
+
+def _get_retriever_for_level(level: str):
+    """Возвращает (и при необходимости лениво загружает) retriever для указанной ступени.
+
+    level: 'bachelor' | 'master'
+    """
+    key = (level or '').strip().lower()
+    if not key:
+        return retriever
+    if key in _retrievers_cache:
+        return _retrievers_cache[key]
+
+    if key == 'bachelor':
+        index_dir = 'faiss_index_bachelor'
+    elif key == 'master':
+        index_dir = 'faiss_index_master'
+    else:
+        # Неизвестный уровень — используем дефолтный
+        return retriever
+
+    vs = FAISS.load_local(
+        index_dir,
+        embeddings,
+        allow_dangerous_deserialization=True
+    )
+    _retrievers_cache[key] = vs.as_retriever(search_kwargs={'k': 7})
+    return _retrievers_cache[key]
 
 
 
@@ -151,7 +181,7 @@ def contains_profanity(text: str) -> bool:
     return any(word in text_clean for word in profanity_words)
 
 
-def answer_question(question: str) -> str:
+def answer_question(question: str, level: str | None = None) -> str:
     """
     Отвечает на вопрос с многоуровневой фильтрацией, используя RAG.
     """
@@ -183,9 +213,11 @@ def answer_question(question: str) -> str:
 Задайте вопрос по этим темам!"""
     
     # 3. Получаем релевантные документы и генерируем ответ
+    # Выбираем retriever в зависимости от уровня (бакалавриат/магистратура)
+    current_retriever = _get_retriever_for_level(level)
     # В новых версиях LangChain retriever реализует протокол Runnable,
-    # поэтому вместо get_relevant_documents используем invoke
-    docs = retriever.invoke(question)
+    # поэтому используем invoke
+    docs = current_retriever.invoke(question)
     context_parts = []
     for d in docs:
         context_parts.append(d.page_content)

@@ -4,19 +4,15 @@ import aiomax
 from dotenv import load_dotenv
 
 from rag_bot import answer_question
+from config import MAX_VK_BOT_USERNAME as BOT_USERNAME
 
 
 load_dotenv("keys.env")
 
 
 TOKEN = os.getenv("MAX_VK_BOT_TOKEN")
-BOT_USERNAME = os.getenv("MAX_VK_BOT_USERNAME")
-
 if not TOKEN:
     raise RuntimeError("MAX_VK_BOT_TOKEN not found in keys.env")
-
-if not BOT_USERNAME:
-    raise RuntimeError("MAX_VK_BOT_USERNAME not found in keys.env")
 
 
 bot = aiomax.Bot(TOKEN, default_format="markdown")
@@ -43,6 +39,36 @@ async def handle_mention(message: aiomax.Message):
     # Удаляем упоминание из текста
     cleaned = text.replace(f"@{BOT_USERNAME}", "").strip()
 
+    # Поддержка хэштегов выбора базы: #БАКАЛАВРИАТ / #БАКЛАВРИАТ / #МАГИСТРАТУРА (в начале текста) - пока не работает
+    def parse_level_and_text(s: str):
+        s_strip = s.lstrip()
+        lowered = s_strip.lower()
+        level = None
+        tag = None
+        if lowered.startswith('#бакалавриат') or lowered.startswith('#баклавриат'):
+            level = 'bachelor'
+            tag = '#бакалавриат' if lowered.startswith('#бакалавриат') else '#баклавриат'
+        elif lowered.startswith('#магистратура'):
+            level = 'master'
+            tag = '#магистратура'
+
+        if level is None:
+            return None, s
+
+        # Отрезаем найденный тег в начале (с учётом реального регистра/пробелов)
+        # Находим индекс начала тега в исходной строке s
+        start_idx = s.lower().find(tag)
+        if start_idx == -1:
+            # fallback: просто удалим первое слово как тег
+            parts = s_strip.split(maxsplit=1)
+            rest = parts[1] if len(parts) > 1 else ''
+            return level, rest.strip()
+        end_idx = start_idx + len(tag)
+        rest = (s[:start_idx] + s[end_idx:]).strip()
+        return level, rest
+
+    level, cleaned = parse_level_and_text(cleaned)
+
     # Проверка на пустой запрос
     if not cleaned:
         await message.reply(
@@ -57,8 +83,8 @@ async def handle_mention(message: aiomax.Message):
         )
         return
 
-    # Получаем и отправляем ответ из RAG-бота
-    reply_text = answer_question(cleaned)
+    # Получаем и отправляем ответ из RAG-бота (с учётом выбранной базы)
+    reply_text = answer_question(cleaned, level=level)
     await message.reply(reply_text)
 
 
@@ -67,8 +93,10 @@ async def on_bot_start(payload: aiomax.BotStartPayload):
     """Приветственное сообщение при начале чата с ботом."""
 
     await payload.send(
-        "Привет! Я бот, который помогает с вопросами о поступлении в магистратуру МФТИ.\n"
-        f"Просто упомяни меня через @{BOT_USERNAME} и задай вопрос."
+        "Привет! Я бот-помощник поступления в МФТИ.\n"
+        f"Чтобы выбрать базу знаний, начни вопрос с хэштега: #БАКАЛАВРИАТ (или #БАКЛАВРИАТ) либо #МАГИСТРАТУРА.\n"
+        f"Если хэштега нет — отвечу из базовой базы.\n\n"
+        f"В чате упомяни меня через @{BOT_USERNAME} и задай вопрос."
     )
 
 
