@@ -35,6 +35,7 @@ class UserTracker:
     
     def get_stats(self) -> str:
         uptime = datetime.now() - self.start_time
-        h, rem = divmod(int(uptime.total_seconds()), 3600)
+        total_seconds = int(uptime.total_seconds())
+        h, rem = divmod(total_seconds, 3600)
         m, _ = divmod(rem, 60)
         return f"Пользователей: {self.count} | Uptime: {h}ч {m}м"
