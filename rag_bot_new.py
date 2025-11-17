@@ -140,6 +140,8 @@ def answer_question(question: str, level: Optional[str] = None) -> str:
     if len(question.strip()) < cfg.min_question_length:
         return "❓ Слишком короткий вопрос. Задайте конкретный вопрос о поступлении."
 
+    question = question.strip()
+
     has_dangerous = contains_dangerous_patterns(question)
     is_on_topic = is_admission_related_smart(question)
 
