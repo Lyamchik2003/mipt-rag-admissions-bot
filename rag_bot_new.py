@@ -78,6 +78,7 @@ class RAGEngine:
 
 DANGEROUS_PATTERNS = [
     "системный промпт", "system prompt", "твоя инструкция", "your instruction",
+    "игнорируй предыдущие", "ignore previous",
     "твоя роль", "your role", "игнорируй инструкц", "ignore instruction",
     "забудь инструкц", "forget instruction", "отвечай как", "act as",
     "представь что ты", "pretend you are", "делай вид что",
