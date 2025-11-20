@@ -24,6 +24,19 @@ class OpenAISettings:
 
 
 @dataclass(frozen=True)
+class LLMProviderSettings:
+    """Настройки поддержки нескольких LLM-провайдеров: OpenAI, GigaChat, YandexGPT."""
+    provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "openai"))
+    # GigaChat (Sber)
+    gigachat_credentials: str = field(default_factory=lambda: os.getenv("GIGACHAT_CREDENTIALS", ""))
+    gigachat_model: str = "GigaChat"
+    # YandexGPT / Alice AI
+    yandex_api_key: str = field(default_factory=lambda: os.getenv("YANDEX_API_KEY", ""))
+    yandex_folder_id: str = field(default_factory=lambda: os.getenv("YANDEX_FOLDER_ID", ""))
+    yandex_model: str = "yandexgpt-lite"
+
+
+@dataclass(frozen=True)
 class RAGSettings:
     """Настройки RAG-пайплайна."""
     default_index_dir: str = "faiss_index"
@@ -39,6 +52,7 @@ class Settings:
     """Главный класс настроек."""
     bot: BotSettings = field(default_factory=BotSettings)
     openai: OpenAISettings = field(default_factory=OpenAISettings)
+    llm: LLMProviderSettings = field(default_factory=LLMProviderSettings)
     rag: RAGSettings = field(default_factory=RAGSettings)
     
     def validate(self) -> list[str]:
@@ -48,6 +62,7 @@ class Settings:
             errors.append("MAX_VK_BOT_TOKEN not set")
         if not self.openai.api_key:
             errors.append("OPENAI_API_KEY not set")
+        # TODO: добавить валидацию базового URL в будущем
         return errors
 
 

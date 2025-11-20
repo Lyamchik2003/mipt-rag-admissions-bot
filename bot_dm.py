@@ -76,6 +76,8 @@ WELCOME_MESSAGE = """👋 **Привет! Я бот-помощник по пос
 
 Выбери уровень образования, чтобы я мог лучше помочь:"""
 
+# Дополнительное приветствие для будущих улучшений
+
 
 @bot.on_message()
 async def handle_message(message: aiomax.Message, cursor: fsm.FSMCursor):

@@ -62,7 +62,7 @@ async def handle_message(message: aiomax.Message):
 
     if len(cleaned) > 500:
         user_logger.info(f"[{user_id}] Слишком длинный ({len(cleaned)} симв.)")
-        await message.reply("Ваш вопрос слишком длинный. Пожалуйста, сформулируйте его короче (до 500 символов).")
+        await message.reply("📝 Вопрос слишком длинный. Пожалуйста, сформулируйте короче (до 500 символов).")
         return
     
     user_logger.info(f"[{user_id}] Вопрос: {cleaned[:100]}...")

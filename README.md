@@ -7,6 +7,8 @@
 - Python 3.11+
 - OpenAI-совместимый API (ключ + опционально кастомный URL)
 
+> Проект исторически поддерживал несколько LLM: **OpenAI**, **GigaChat** (Сбер) и **YandexGPT / Alice AI**.
+
 > Все коммиты датированы периодом активной разработки (ноябрь 2025).
 
 ## Быстрый старт
@@ -34,6 +36,12 @@ MAX_VK_BOT_TOKEN=ваш_токен
 MAX_VK_BOT_USERNAME=username_бота
 OPENAI_API_KEY=sk-...
 OPENAI_API_BASE=https://api.openai.com/v1  # опционально
+
+# Historical providers
+LLM_PROVIDER=openai|gigachat|yandex
+GIGACHAT_CREDENTIALS=...
+YANDEX_API_KEY=...
+YANDEX_FOLDER_ID=...
 ```
 
 ## Структура проекта
