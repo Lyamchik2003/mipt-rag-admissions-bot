@@ -1,206 +1,159 @@
-# MAX_hackaton RAG Bot
+<div align="center">
 
-Ассистент для абитуриентов МФТИ на платформе VK/MAX. Отвечает на вопросы по поступлению, используя RAG (FAISS + LLM).
+# Abitur.AI
 
-## Требования
+**Всегда на связи**
 
-- Python 3.11+
-- OpenAI-совместимый API (ключ + опционально кастомный URL)
+RAG-бот для поступления в МФТИ (VK MAX)
 
-> Проект поддерживает несколько LLM: **OpenAI**, **GigaChat** (Сбер) и **YandexGPT / Alice AI**.
+</div>
 
-> Все коммиты датированы периодом активной разработки (ноябрь 2025).
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![VK MAX](https://img.shields.io/badge/VK_MAX-Bot-5181b8?style=for-the-badge&logo=vk&logoColor=white)](https://dev.vk.com/)
+
+</div>
+
+---
+
+## 📊 Презентация
+
+<object data="Команда 30 - Abitur.AI.pdf" type="application/pdf" width="100%" height="650px">
+  <p>Просмотр PDF недоступен в вашем браузере.</p>
+  <p><a href="Команда 30 - Abitur.AI.pdf">Скачать презентацию</a></p>
+</object>
+
+---
+
+## Возможности
+
+- Два интерфейса: ЛС с кнопками + группы (по упоминанию)
+- Поддержка OpenAI, GigaChat, YandexGPT
+- Отдельные FAISS-индексы для бакалавриата и магистратуры
+- Фильтрация jailbreak, мата и вопросов не по теме
+- Ленивая загрузка моделей и индексов
+- Ответы с источниками
+- Firecrawl collector для автоматического сбора данных с сайтов вузов (быстрая адаптация к любому университету)
+
+---
 
 ## Быстрый старт
 
 ```powershell
-# 1. Создать окружение
+git clone <repo>
+cd mipt-rag-admissions-bot
+
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-# 2. Настроить keys.env (см. ниже)
-
-# 3. Собрать индексы
-python setup_rag.py
-
-# 4. Запустить бота
-python bot_dm.py      # ЛС с кнопками
-python bot_group.py   # Групповой чат (упоминания)
 ```
 
-## Настройка (keys.env)
+Создайте `keys.env`:
 
 ```env
-MAX_VK_BOT_TOKEN=ваш_токен
-MAX_VK_BOT_USERNAME=username_бота
+MAX_VK_BOT_TOKEN=...
+MAX_VK_BOT_USERNAME=...
+
+LLM_PROVIDER=openai          # openai | gigachat | yandex
+
 OPENAI_API_KEY=sk-...
-OPENAI_API_BASE=https://api.openai.com/v1  # опционально
+# GIGACHAT_CREDENTIALS=...
+# YANDEX_API_KEY=...
+# YANDEX_FOLDER_ID=...
 
-# Поддерживаемые LLM-провайдеры
-LLM_PROVIDER=openai|gigachat|yandex
-GIGACHAT_CREDENTIALS=...
-YANDEX_API_KEY=...
-YANDEX_FOLDER_ID=...
+# Для Firecrawl collector (адаптация к другим вузам)
+# FIRECRAWL_API_KEY=fc-...
 ```
 
-## Структура проекта
-
-```
-├── bot_dm.py           # Бот для ЛС (кнопки + FSM)
-├── bot_group.py        # Бот для групп (упоминания)
-├── rag_bot_new.py      # RAG-пайплайн (ленивая загрузка)
-├── settings.py         # Единая конфигурация
-├── common.py           # Общие компоненты (логирование, трекер)
-├── setup_rag.py        # Сборка FAISS-индексов
-├── data/
-│   ├── faq.json        # FAQ вопросы
-│   ├── rules2025.json  # Данные бакалавриата
-│   └── rules2025_magistratura_only.json  # Данные магистратуры
-├── faiss_index/        # Базовый индекс
-├── faiss_index_bachelor/
-├── faiss_index_master/
-└── keys.env            # Секреты 
-```
-
-## Конфигурация (settings.py)
-
-Все параметры в одном месте:
-
-| Параметр | Описание | По умолчанию |
-|----------|----------|--------------|
-| `openai.model` | Модель LLM | `gpt-4o-mini` |
-| `openai.embedding_model` | Модель эмбеддингов | `text-embedding-ada-002` |
-| `rag.retriever_k` | Кол-во документов для поиска | `7` |
-| `rag.max_question_length` | Макс. длина вопроса | `500` |
-
-## Два режима работы
-
-### bot_dm.py — Личные сообщения
-- Кнопки для выбора уровня (бакалавриат/магистратура)
-- FAQ с быстрыми вопросами
-- FSM для навигации
-- Не требует упоминания
-
-### bot_group.py — Групповой чат
-- Только через упоминание `@username`
-- Без кнопок
-- Фиксированный уровень: магистратура
-
-## Логирование
-
-```
-2025-11-26 04:15:23 - MAIN - INFO - [НОВЫЙ] user_id=123 | Пользователей: 5 | Uptime: 2ч 15м
-2025-11-26 04:15:25 - USER - INFO - [123] Вопрос (master): какие сроки...
-2025-11-26 04:15:30 - RAG - WARNING - [НЕТ ИНФО] level=master | Вопрос: про общежитие
-```
-
-Уровни логгеров:
-- `MAIN` — системные события (новые пользователи, ошибки)
-- `USER` — действия пользователей
-- `RAG` — предупреждения о недостатке информации в базе
-
-## Сборка индексов
+Запуск:
 
 ```powershell
-# Стандартная сборка
+python bot_dm.py      # ЛС с кнопками
+python bot_group.py   # Группы
+```
+
+Индексы уже собраны. Для пересборки:
+
+```powershell
 python setup_rag.py
-
-# С кастомными путями
-python setup_rag.py --bachelor data/rules2025.json --master data/rules2025_magistratura_only.json
 ```
 
-## FAQ (data/faq.json)
+---
 
-Редактируется без изменения кода:
+## Конфигурация
 
-```json
-{
-  "master": {
-    "сроки": {
-      "question": "Расскажи про сроки подачи документов...",
-      "source": "https://pk.mipt.ru/master/",
-      "source_name": "Приёмная комиссия"
-    }
-  }
-}
-```
+Основные параметры в `settings.py`.
+
+| Параметр               | Описание                     | По умолчанию     |
+|------------------------|------------------------------|------------------|
+| `LLM_PROVIDER`         | Провайдер                    | `openai`         |
+| `openai.model`         | Модель ответов               | `gpt-4o-mini`    |
+| `rag.retriever_k`      | Документов на запрос         | `7`              |
+| `rag.max_question_length` | Макс. длина вопроса        | `500`            |
+
+---
+
+## Поддерживаемые LLM
+
+- OpenAI (и совместимые)
+- GigaChat
+- YandexGPT
+
+Переключается через `LLM_PROVIDER` в `keys.env`.
+
+---
+
+## Защита
+
+В `rag_bot_new.py`:
+
+- `DANGEROUS_PATTERNS` + `contains_dangerous_patterns()` — фильтр jailbreak и попыток смены роли.
+- `is_admission_related_smart()` — LLM-проверка, что вопрос касается поступления.
+- `PROFANITY_WORDS` + `contains_profanity()` — блокировка мата в запросах и ответах.
+- Пост-проверка ответов на фразы «нет информации», короткие отказы.
+- Логирование (уровень RAG).
+
+Дополнительно: проверка длины вопроса, приведение к нижнему регистру.
+
+---
 
 ## Архитектура
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  bot_dm.py  │────▶│ rag_bot_new │────▶│   FAISS     │
-│ bot_group.py│     │   .py       │     │   Index     │
-└─────────────┘     └──────┬──────┘     └─────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │   OpenAI    │
-                    │     LLM     │
-                    └─────────────┘
+bot_dm.py / bot_group.py
+        ↓
+rag_bot_new.py (фильтры + RAG)
+        ↓
+FAISS + LLM (выбор провайдера)
 ```
 
-**Ленивая загрузка**: Индексы и модели инициализируются при первом запросе, не при импорте.
+- Ленивая загрузка
+- Разделённые индексы по уровням
+- Модульная структура
 
-## Тестирование
+---
 
-### Быстрая проверка (без pytest)
+## Интерфейс
 
-```powershell
-# Базовые проверки
-python tests.py
+- Крупные кнопки в ЛС
+- Выбор уровня (бакалавриат/магистратура)
+- FAQ и тематические разделы
+- Ответ + ссылка на источник
+- Единый стиль, минимум шагов
 
-# С проверкой API ключей
-python tests.py --check-api
-```
+---
 
-### Полное тестирование (pytest)
+## Требования
 
-```powershell
-# Все тесты
-pytest tests.py -v
+- Python 3.11+
+- OpenAI-совместимый API (или GigaChat / Yandex)
+- VK MAX Bot токен
 
-# Только startup тесты (быстрые)
-pytest tests.py -v -m startup
+---
 
-# Без медленных API тестов
-pytest tests.py -v -m "not slow"
+<div align="center">
 
-# Через CLI
-python tests.py --pytest
-```
+**Abitur.AI** — https://max.ru/t30_hakaton_bot
 
-### Маркеры тестов
-
-| Маркер | Описание |
-|--------|----------|
-| `startup` | Быстрые тесты для проверки запуска |
-| `slow` | Медленные тесты (API запросы) |
-| `api` | Тесты внешних API соединений |
-
-### Тестовые классы
-
-| Класс | Кол-во тестов | Описание |
-|-------|---------------|----------|
-| `TestStartup` | 5 | Модули, env файл, токены, FAISS индексы |
-| `TestConfiguration` | 3 | Иммутабельность настроек, валидация моделей |
-| `TestFAQ` | 4 | Существование, формат, структура FAQ |
-| `TestAPIConnections` | 2 | OpenAI Chat и Embeddings (slow) |
-| `TestRAGEngine` | 4 | Импорт, детекция фильтров |
-
-**Всего: 18 тестов**
-
-### Интеграция в CI
-
-```yaml
-# .github/workflows/test.yml
-- name: Run tests
-  run: pytest tests.py -v -m "not slow"  # Быстрые тесты в CI
-```
-
-### Запуск перед деплоем
-
-```powershell
-# Полная проверка перед запуском бота
-python tests.py --check-api
-```
+</div>
