@@ -1,4 +1,5 @@
 import os
+import logging
 import warnings
 from datetime import datetime
 
@@ -9,6 +10,8 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="langchain
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores.faiss import FAISS
 from config import OPENAI_API_KEY, OPENAI_API_BASE
+
+logger = logging.getLogger('RAG')
 
 os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 os.environ['OPENAI_API_BASE'] = OPENAI_API_BASE
@@ -174,7 +177,12 @@ def answer_question(question: str, level: str | None = None) -> str:
         if contains_profanity(final):
             return "Извините, я не могу предоставить такой ответ. Обратитесь к Юлии Синицыной за помощью."
 
+        no_info_phrases = ["нет информации", "не нашел", "не содержит", "не упоминается", "отсутствует"]
+        if any(phrase in final.lower() for phrase in no_info_phrases):
+            logger.warning(f"[НЕТ ИНФО] level={level} | Вопрос: {question}")
+
         if not final or len(final) < 10 or final.lower().startswith("извините") or final.lower().startswith("я не знаю"):
+            logger.warning(f"[НЕТ ИНФО] level={level} | Вопрос: {question}")
             return "Я не смогла найти подходящей информации. Если вопрос очень важный — обратитесь к Юлии Синицыной."
 
         return final
