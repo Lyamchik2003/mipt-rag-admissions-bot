@@ -117,7 +117,7 @@ def contains_dangerous_patterns(text: str) -> bool:
     # НОВОЕ: Попытки подменить слова в ответе
     substitution_patterns = [
         "замени", "replace", "подмени", "substitute", "вместо", "instead of",
-        "поменяй", "change", "измени", "modify", "скажи", "say instead",
+        "поменяй", "change", "измени", "modify", "say instead",
         "напиши вместо", "write instead", "используй слово", "use word",
         "когда отвечаешь", "when you answer", "в своем ответе", "in your response",
         "отвечай словом", "answer with word", "говори", "tell", "произнеси", "pronounce",
@@ -139,13 +139,9 @@ def contains_dangerous_patterns(text: str) -> bool:
 
 
 def is_admission_related_smart(question: str) -> bool:
-    """Проверяет тематику через LLM с дополнительными фильтрами"""
+    """Проверяет тематику через LLM"""
     
-    # Предварительная проверка на опасные паттерны
-    if contains_dangerous_patterns(question):
-        return False
-    
-    check_prompt = f"""Определи, связан ли следующий вопрос с поступлением в университет/магистратуру.
+    check_prompt = f"""Определи, связан ли следующий вопрос с поступлением в университет (бакалавриат или магистратуру).
 
 Вопрос: "{question}"
 
@@ -156,6 +152,8 @@ def is_admission_related_smart(question: str) -> bool:
 - требованиях к поступающим
 - сроках и дедлайнах
 - учебных программах и специальностях
+- олимпиадах и льготах
+- общежитии и стипендиях
 
 Ответь "НЕТ" если вопрос о погоде, развлечениях, общих темах, не связанных с поступлением.
 
@@ -193,15 +191,19 @@ def answer_question(question: str, level: str | None = None) -> str:
     if len(question.strip()) < 3:
         return "❓ Слишком короткий вопрос. Задайте конкретный вопрос о поступлении."
     
-    # 1. Проверка на опасные паттерны (попытки взлома)
-    if contains_dangerous_patterns(question):
-        return """Я отвечаю только на вопросы о поступлении в магистратуру МФТИ.
+    # 1. Комбинированная проверка: блокируем только если И фильтр сработал, И LLM сказал "нет"
+    has_dangerous_patterns = contains_dangerous_patterns(question)
+    is_admission_related = is_admission_related_smart(question)
+    
+    # Блокируем только если оба условия: есть опасные паттерны И вопрос не по теме
+    if has_dangerous_patterns and not is_admission_related:
+        return """Я отвечаю только на вопросы о поступлении в МФТИ.
         
 Не могу выполнять задания, игры или отвечать на запросы, не связанные с поступлением."""
     
-    # 2. Проверяем тематику через LLM
-    if not is_admission_related_smart(question):
-        return """Я специализируюсь на вопросах поступления в магистратуру МФТИ. 
+    # Если только LLM сказал "не по теме" (без опасных паттернов) — мягкое предупреждение
+    if not is_admission_related:
+        return """Я специализируюсь на вопросах поступления в МФТИ. 
 
 Могу помочь с:
 • Подачей документов и сроками
@@ -212,7 +214,7 @@ def answer_question(question: str, level: str | None = None) -> str:
 
 Задайте вопрос по этим темам!"""
     
-    # 3. Получаем релевантные документы и генерируем ответ
+    # 2. Получаем релевантные документы и генерируем ответ
     # Выбираем retriever в зависимости от уровня (бакалавриат/магистратура)
     current_retriever = _get_retriever_for_level(level)
     # В новых версиях LangChain retriever реализует протокол Runnable,
