@@ -3,6 +3,8 @@
 С кнопками и FSM, без необходимости упоминания.
 """
 import os
+import logging
+from datetime import datetime
 
 import aiomax
 from aiomax import fsm
@@ -11,22 +13,49 @@ from dotenv import load_dotenv
 
 from rag_bot import answer_question
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+main_logger = logging.getLogger('MAIN')
+user_logger = logging.getLogger('USER')
+logging.getLogger('aiomax').setLevel(logging.WARNING)
+logging.getLogger('aiohttp').setLevel(logging.WARNING)
+
+
+class UserTracker:
+    """Трекер уникальных пользователей за сессию."""
+    
+    def __init__(self):
+        self.active_users: set[int] = set()
+        self.start_time: datetime = datetime.now()
+    
+    def add_user(self, user_id: int) -> bool:
+        """Регистрирует пользователя. Возвращает True если новый."""
+        is_new = user_id not in self.active_users
+        self.active_users.add(user_id)
+        return is_new
+    
+    @property
+    def count(self) -> int:
+        return len(self.active_users)
+    
+    def get_stats(self) -> str:
+        uptime = datetime.now() - self.start_time
+        h, rem = divmod(int(uptime.total_seconds()), 3600)
+        m, s = divmod(rem, 60)
+        return f"Пользователей: {self.count} | Uptime: {h}ч {m}м"
+
+
+tracker = UserTracker()
 
 load_dotenv("keys.env")
-
-
 TOKEN = os.getenv("MAX_VK_BOT_TOKEN")
 if not TOKEN:
     raise RuntimeError("MAX_VK_BOT_TOKEN not found in keys.env")
 
-
 bot = aiomax.Bot(TOKEN, default_format="markdown")
 
 
-# ==================== КЛАВИАТУРЫ ====================
-
 def get_level_keyboard() -> KeyboardBuilder:
-    """Клавиатура выбора уровня образования."""
+    """Клавиатура выбора уровня образования (бакалавриат/магистратура)."""
     kb = KeyboardBuilder()
     kb.add(
         CallbackButton("🎓 Бакалавриат", "level:bachelor"),
@@ -38,7 +67,6 @@ def get_level_keyboard() -> KeyboardBuilder:
 def get_faq_keyboard(level: str) -> KeyboardBuilder:
     """Клавиатура с частыми вопросами для выбранного уровня."""
     kb = KeyboardBuilder()
-    
     if level == "master":
         kb.add(CallbackButton("📅 Сроки подачи", f"faq:{level}:сроки"))
         kb.row(CallbackButton("📝 Как подать заявление", f"faq:{level}:заявление"))
@@ -73,9 +101,6 @@ def get_contact_keyboard() -> KeyboardBuilder:
     return kb
 
 
-# ==================== FAQ ВОПРОСЫ ====================
-
-# Структура: { topic: { "question": текст запроса, "source": ссылка на источник } }
 FAQ_QUESTIONS = {
     "master": {
         "сроки": {
@@ -133,9 +158,6 @@ FAQ_QUESTIONS = {
     }
 }
 
-
-# ==================== ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ ====================
-
 WELCOME_MESSAGE = """👋 **Привет! Я бот-помощник по поступлению в МФТИ.**
 
 🎓 Я помогу тебе разобраться с:
@@ -151,160 +173,119 @@ WELCOME_MESSAGE = """👋 **Привет! Я бот-помощник по пос
 Выбери уровень образования, чтобы я мог лучше помочь:"""
 
 
-# ==================== ОБРАБОТЧИКИ ====================
-
 @bot.on_message()
 async def handle_message(message: aiomax.Message, cursor: fsm.FSMCursor):
-    """Обрабатывает все входящие сообщения в ЛС."""
-
+    """Обработка входящих сообщений в ЛС. Направляет пользователя по FSM."""
     text = (message.body.text or "").strip()
-    
-    # Проверяем, новый ли это пользователь (нет состояния)
+    user_id = message.sender.user_id
     current_state = cursor.get_state()
-    
-    # Если пользователь новый — показываем приветствие
+
     if current_state is None:
-        kb = get_level_keyboard()
+        if tracker.add_user(user_id):
+            main_logger.info(f"[НОВЫЙ] user_id={user_id} | {tracker.get_stats()}")
+        user_logger.info(f"[{user_id}] Первое сообщение")
         cursor.change_state("greeted")
-        await message.reply(WELCOME_MESSAGE, keyboard=kb)
+        await message.reply(WELCOME_MESSAGE, keyboard=get_level_keyboard())
         return
     
-    # Если пользователь только поприветствован, но не выбрал уровень — напоминаем
+    tracker.add_user(user_id)
+
     if current_state == "greeted":
-        kb = get_level_keyboard()
-        await message.reply(
-            "👆 Сначала выбери уровень образования с помощью кнопок выше.",
-            keyboard=kb
-        )
+        user_logger.info(f"[{user_id}] Не выбрал уровень")
+        await message.reply("👆 Сначала выбери уровень образования с помощью кнопок выше.", keyboard=get_level_keyboard())
         return
-    
-    # Если пользователь не в состоянии ожидания вопроса — пропускаем
-    # (обработается в handle_free_question)
+
     if current_state != "waiting_question":
         return
 
 
 @bot.on_bot_start()
 async def on_bot_start(payload: aiomax.BotStartPayload, cursor: fsm.FSMCursor):
-    """Приветственное сообщение при начале чата с ботом."""
-    
-    cursor.clear()  # Сбрасываем состояние
+    """Обработка команды /start."""
+    user_id = payload.user.user_id
+    if tracker.add_user(user_id):
+        main_logger.info(f"[НОВЫЙ] user_id={user_id} | {tracker.get_stats()}")
+    user_logger.info(f"[{user_id}] /start")
+    cursor.clear()
     cursor.change_state("greeted")
-    
-    kb = get_level_keyboard()
-    await payload.send(WELCOME_MESSAGE, keyboard=kb)
+    await payload.send(WELCOME_MESSAGE, keyboard=get_level_keyboard())
 
 @bot.on_button_callback()
 async def handle_callback(callback: aiomax.Callback, cursor: fsm.FSMCursor):
-    """Обрабатывает нажатия на кнопки."""
-    
+    """Обработка нажатий кнопок: выбор уровня, FAQ, навигация."""
     payload = callback.payload
-    
-    # Выбор уровня образования
+    user_id = callback.user.user_id
+    user_logger.info(f"[{user_id}] Callback: {payload}")
+
     if payload.startswith("level:"):
         level = payload.split(":")[1]
         cursor.change_data({"level": level})
         cursor.change_state("waiting_question")
-        
         level_name = "Бакалавриат" if level == "bachelor" else "Магистратура"
-        kb = get_faq_keyboard(level)
-        
+        user_logger.info(f"[{user_id}] Уровень: {level_name}")
         await callback.answer(f"Выбран: {level_name}")
-        await callback.send(
-            f"✅ Выбран уровень: **{level_name}**\n\n"
-            "Выбери частый вопрос или напиши свой:",
-            keyboard=kb
-        )
-    
-    # Смена уровня образования
+        await callback.send(f"✅ Выбран уровень: **{level_name}**\n\nВыбери частый вопрос или напиши свой:", keyboard=get_faq_keyboard(level))
+
     elif payload == "change_level":
         cursor.clear()
-        kb = get_level_keyboard()
-        
         await callback.answer("Смена уровня")
-        await callback.send(
-            "🔄 Выбери уровень образования:",
-            keyboard=kb
-        )
-    
-    # Быстрые FAQ вопросы
+        await callback.send("🔄 Выбери уровень образования:", keyboard=get_level_keyboard())
+
     elif payload.startswith("faq:"):
         parts = payload.split(":")
-        level = parts[1]
-        topic = parts[2]
-        
+        level, topic = parts[1], parts[2]
         faq_data = FAQ_QUESTIONS.get(level, {}).get(topic)
         if faq_data:
             await callback.answer("Загрузка...")
-            
-            # Получаем данные FAQ
-            question = faq_data["question"]
-            source_url = faq_data.get("source", "")
-            source_name = faq_data.get("source_name", "Источник")
-            
-            # Получаем ответ от RAG
-            reply_text = answer_question(question, level=level)
-            
-            # Формируем клавиатуру с источником
+            reply_text = answer_question(faq_data["question"], level=level)
             kb = KeyboardBuilder()
             kb.add(CallbackButton("❓ Другой вопрос", f"more:{level}"))
-            if source_url:
-                kb.row(LinkButton(f"📎 {source_name}", source_url))
+            if faq_data.get("source"):
+                kb.row(LinkButton(f"📎 {faq_data.get('source_name', 'Источник')}", faq_data["source"]))
             kb.row(CallbackButton("🔄 Сменить уровень", "change_level"))
-            
-            await callback.send(
-                f"{reply_text}\n\n"
-                f"---\n"
-                f"💡 *Подробнее смотри в источнике ниже*",
-                keyboard=kb
-            )
+            await callback.send(f"{reply_text}\n\n---\n💡 *Подробнее смотри в источнике ниже*", keyboard=kb)
         else:
             await callback.answer("Вопрос не найден")
-    
-    # Задать другой вопрос
+
     elif payload.startswith("more:"):
         level = payload.split(":")[1]
-        kb = get_faq_keyboard(level)
-        
         await callback.answer("Новый вопрос")
-        await callback.send(
-            "❓ Выбери частый вопрос или напиши свой:",
-            keyboard=kb
-        )
-    
+        await callback.send("❓ Выбери частый вопрос или напиши свой:", keyboard=get_faq_keyboard(level))
+
     else:
         await callback.answer("Неизвестная команда")
 
 
 @bot.on_message(aiomax.filters.state("waiting_question"))
 async def handle_free_question(message: aiomax.Message, cursor: fsm.FSMCursor):
-    """Обрабатывает свободные вопросы в режиме ожидания (ЛС)."""
-    
+    """Обработка свободных вопросов от пользователя."""
     text = (message.body.text or "").strip()
-    
-    # Проверка на пустой запрос
+    user_id = message.sender.user_id
+
     if not text:
         return
-    
-    # Проверка длины
+
     if len(text) > 500:
-        await message.reply(
-            "Ваш вопрос слишком длинный. Пожалуйста, сформулируйте его короче."
-        )
+        await message.reply("Ваш вопрос слишком длинный. Пожалуйста, сформулируйте его короче.")
         return
-    
+
     data = cursor.get_data() or {}
     level = data.get("level", "master")
-    
-    # Получаем ответ
-    reply_text = answer_question(text, level=level)
-    kb = get_after_answer_keyboard(level)
-    
-    await message.reply(reply_text, keyboard=kb)
+    user_logger.info(f"[{user_id}] Вопрос ({level}): {text[:100]}...")
+
+    try:
+        reply_text = answer_question(text, level=level)
+        user_logger.info(f"[{user_id}] Ответ: {len(reply_text)} симв.")
+        await message.reply(reply_text, keyboard=get_after_answer_keyboard(level))
+    except Exception as e:
+        main_logger.error(f"[ОШИБКА] user_id={user_id} | {type(e).__name__}: {e}")
+        await message.reply("Произошла ошибка при обработке запроса. Попробуйте позже.")
 
 
 def main() -> None:
-    print("Бот запущен на aiomax (VK/MAX API), ожидаю сообщения.")
+    main_logger.info("=" * 50)
+    main_logger.info("[ЗАПУСК] Бот для ЛС (с кнопками и FSM)")
+    main_logger.info("=" * 50)
     bot.run()
 
 
