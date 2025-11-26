@@ -1,59 +1,22 @@
-"""
-Лайт-версия бота для групповых чатов.
-Взаимодействие только через упоминание @username.
-Без кнопок и FSM.
-"""
-import os
-import logging
-from datetime import datetime
-
+"""Лайт-версия бота для групповых чатов. Только упоминания, без кнопок."""
 import aiomax
-from dotenv import load_dotenv
 
-from rag_bot import answer_question
-from config import MAX_VK_BOT_USERNAME as BOT_USERNAME
+from common import setup_logging, UserTracker
+from rag_bot_new import answer_question
+from settings import settings
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-main_logger = logging.getLogger('MAIN')
-user_logger = logging.getLogger('USER')
-logging.getLogger('aiomax').setLevel(logging.WARNING)
-logging.getLogger('aiohttp').setLevel(logging.WARNING)
-
-
-class UserTracker:
-    """Трекер уникальных пользователей за сессию."""
-    
-    def __init__(self):
-        self.active_users: set[int] = set()
-        self.start_time: datetime = datetime.now()
-    
-    def add_user(self, user_id: int) -> bool:
-        """Регистрирует пользователя. Возвращает True если новый."""
-        is_new = user_id not in self.active_users
-        self.active_users.add(user_id)
-        return is_new
-    
-    @property
-    def count(self) -> int:
-        return len(self.active_users)
-    
-    def get_stats(self) -> str:
-        uptime = datetime.now() - self.start_time
-        h, rem = divmod(int(uptime.total_seconds()), 3600)
-        m, s = divmod(rem, 60)
-        return f"Пользователей: {self.count} | Uptime: {h}ч {m}м"
-
-
+main_logger, user_logger = setup_logging()
 tracker = UserTracker()
 
-load_dotenv("keys.env")
-TOKEN = os.getenv("MAX_VK_BOT_TOKEN")
-if not TOKEN:
+BOT_USERNAME = settings.bot.username
+LEVEL = "master"
+
+if not settings.bot.token:
     raise RuntimeError("MAX_VK_BOT_TOKEN not found in keys.env")
 
-bot = aiomax.Bot(TOKEN, default_format="markdown")
+bot = aiomax.Bot(settings.bot.token, default_format="markdown")
 
-WELCOME_MESSAGE = """👋 **Привет! Я бот-помощник по поступлению в магистратуру МФТИ.**
+WELCOME_MESSAGE = f"""👋 **Привет! Я бот-помощник по поступлению в магистратуру МФТИ.**
 
 🎓 Я помогу тебе разобраться с:
 • Сроками и этапами поступления
@@ -63,12 +26,10 @@ WELCOME_MESSAGE = """👋 **Привет! Я бот-помощник по пос
 
 📚 Я знаю правила приёма в **магистратуру** МФТИ 2025 года.
 
-💬 Чтобы задать вопрос, упомяни меня: @{bot_username} <твой вопрос>
+💬 Чтобы задать вопрос, упомяни меня: @{BOT_USERNAME} <твой вопрос>
 
-Например: @{bot_username} какие сроки подачи документов?
-""".format(bot_username=BOT_USERNAME)
-
-LEVEL = "master"
+Например: @{BOT_USERNAME} какие сроки подачи документов?
+"""
 
 
 @bot.on_message()
