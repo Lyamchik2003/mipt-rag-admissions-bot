@@ -4,6 +4,7 @@ import aiomax
 from common import setup_logging, UserTracker
 from rag_bot_new import answer_question
 from settings import settings
+from tests import run_startup_tests
 
 main_logger, user_logger = setup_logging()
 tracker = UserTracker()
@@ -93,6 +94,7 @@ async def on_bot_add(chat: aiomax.Chat):
 
 
 def main() -> None:
+    run_startup_tests()
     main_logger.info("=" * 50)
     main_logger.info(f"[ЗАПУСК] Групповой бот | @{BOT_USERNAME} | level={LEVEL}")
     main_logger.info("=" * 50)

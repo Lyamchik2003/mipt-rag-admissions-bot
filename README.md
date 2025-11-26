@@ -132,4 +132,65 @@ python setup_rag.py --bachelor data/rules2025.json --master data/rules2025_magis
 
 **Ленивая загрузка**: Индексы и модели инициализируются при первом запросе, не при импорте.
 
+## Тестирование
 
+### Быстрая проверка (без pytest)
+
+```powershell
+# Базовые проверки
+python tests.py
+
+# С проверкой API ключей
+python tests.py --check-api
+```
+
+### Полное тестирование (pytest)
+
+```powershell
+# Все тесты
+pytest tests.py -v
+
+# Только startup тесты (быстрые)
+pytest tests.py -v -m startup
+
+# Без медленных API тестов
+pytest tests.py -v -m "not slow"
+
+# Через CLI
+python tests.py --pytest
+```
+
+### Маркеры тестов
+
+| Маркер | Описание |
+|--------|----------|
+| `startup` | Быстрые тесты для проверки запуска |
+| `slow` | Медленные тесты (API запросы) |
+| `api` | Тесты внешних API соединений |
+
+### Тестовые классы
+
+| Класс | Кол-во тестов | Описание |
+|-------|---------------|----------|
+| `TestStartup` | 5 | Модули, env файл, токены, FAISS индексы |
+| `TestConfiguration` | 3 | Иммутабельность настроек, валидация моделей |
+| `TestFAQ` | 4 | Существование, формат, структура FAQ |
+| `TestAPIConnections` | 2 | OpenAI Chat и Embeddings (slow) |
+| `TestRAGEngine` | 4 | Импорт, детекция фильтров |
+
+**Всего: 18 тестов**
+
+### Интеграция в CI
+
+```yaml
+# .github/workflows/test.yml
+- name: Run tests
+  run: pytest tests.py -v -m "not slow"  # Быстрые тесты в CI
+```
+
+### Запуск перед деплоем
+
+```powershell
+# Полная проверка перед запуском бота
+python tests.py --check-api
+```

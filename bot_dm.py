@@ -9,6 +9,7 @@ from aiomax.buttons import KeyboardBuilder, CallbackButton, LinkButton
 from common import setup_logging, UserTracker
 from rag_bot_new import answer_question
 from settings import settings
+from tests import run_startup_tests
 
 main_logger, user_logger = setup_logging()
 tracker = UserTracker()
@@ -183,6 +184,7 @@ async def handle_free_question(message: aiomax.Message, cursor: fsm.FSMCursor):
 
 
 def main() -> None:
+    run_startup_tests()
     main_logger.info("=" * 50)
     main_logger.info("[ЗАПУСК] Бот для ЛС (с кнопками и FSM)")
     main_logger.info("=" * 50)
