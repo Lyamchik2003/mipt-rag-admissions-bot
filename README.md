@@ -17,12 +17,19 @@ RAG-бот для поступления в МФТИ (VK MAX)
 
 ---
 
-## Презентация
+##  Презентация
 
-Полная презентация проекта лежит в репозитории:
-
-**[Скачать / открыть презентацию (PDF)](Команда%2030%20-%20Abitur.AI.pdf)**
-
+<div style="overflow-x:auto; white-space:nowrap; padding:8px; background:#fafbfc; border:1px solid #d0d7de; border-radius:6px;">
+<img src="assets/slides/slide-01.png" alt="Слайд 1" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-02.png" alt="Слайд 2" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-03.png" alt="Слайд 3" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-04.png" alt="Слайд 4" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-05.png" alt="Слайд 5" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-06.png" alt="Слайд 6" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-07.png" alt="Слайд 7" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-08.png" alt="Слайд 8" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+<img src="assets/slides/slide-09.png" alt="Слайд 9" style="height:320px; margin-right:6px; border-radius:3px; box-shadow:0 1px 2px rgba(0,0,0,0.1); display:inline-block;" />
+</div>
 
 ---
 
