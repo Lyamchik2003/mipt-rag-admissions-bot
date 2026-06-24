@@ -1,9 +1,6 @@
 """RAG-пайплайн для ответов на вопросы о поступлении.
 
-Поддерживаемые LLM-провайдеры:
-- OpenAI (по умолчанию)
-- GigaChat (Sber)
-- YandexGPT / Alice AI (Yandex)
+Поддерживает OpenAI, GigaChat и YandexGPT.
 """
 import logging
 import os
@@ -48,12 +45,9 @@ class RAGEngine:
         """Ленивая инициализация чат-модели."""
         provider = getattr(settings, 'llm', None) and getattr(settings.llm, 'provider', 'openai') or 'openai'
 
-        # Поддержка разных провайдеров
         if provider == "gigachat":
-            # GigaChat (Sber)
             pass
         elif provider == "yandex":
-            # YandexGPT / Alice AI
             pass
 
         if cls._chat_model is None:

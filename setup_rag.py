@@ -1,15 +1,6 @@
-"""setup_rag.py
+"""Генерирует FAISS-индексы из JSON или Markdown для бакалавриата и магистратуры.
 
-Генерирует два FAISS-индекса из двух JSON-файлов:
- - Бакалавриат → faiss_index_bachelor
- - Магистратура → faiss_index_master
-
-По умолчанию использует:
- - bachelor: data/rules2025.json
- - master:   data/rules2025_magistratura_only.json
-
-Можно переопределить через аргументы командной строки:
-  --bachelor PATH --master PATH --bachelor-out DIR --master-out DIR
+Используется setup_rag.py --bachelor ... --master ...
 """
 
 import argparse
@@ -38,7 +29,6 @@ def load_json_entries(path: Path, default_source: str) -> list[dict]:
         entries = []
         for entry in data:
             if not isinstance(entry, dict) or "text" not in entry:
-                # допускаем простые строки и преобразуем их в объекты
                 if isinstance(entry, str):
                     entry = {"text": entry}
                 else:
@@ -51,6 +41,7 @@ def load_json_entries(path: Path, default_source: str) -> list[dict]:
 
 def build_and_save_index(entries: list[dict], out_dir: Path):
     def _split_text(text: str, chunk_size: int = 500, chunk_overlap: int = 50) -> list[str]:
+        """Простое разбиение текста на чанки с перекрытием."""
         text = text or ""
         if chunk_size <= 0:
             return [text]
@@ -74,7 +65,6 @@ def build_and_save_index(entries: list[dict], out_dir: Path):
             meta = {"source": entry.get("source", "unknown")}
             if "metadata" in entry and isinstance(entry["metadata"], dict):
                 meta.update(entry["metadata"])
-            # Если у записи есть раздел/секция — добавим
             if "section" in entry:
                 meta["section"] = entry["section"]
             metadatas.append(meta)
@@ -94,10 +84,9 @@ def build_and_save_index(entries: list[dict], out_dir: Path):
 
 
 def _parse_markdown_to_entries(md_text: str, default_source: str) -> list[dict]:
-    """Парсит Markdown в список записей вида {text, source, section}.
+    """Парсит Markdown в записи {text, source, section}.
 
-    Заголовки #, ##, ### формируют иерархию; в метаданные кладём 'section' как путь "H1 > H2 > H3".
-    Текст каждой секции будет дополнен заголовочным путём в начале, чтобы сохранить контекст при разбиении.
+    Иерархия заголовков сохраняется в section.
     """
     lines = md_text.splitlines()
     heading_stack: list[tuple[int, str]] = []  # (level, title)
@@ -121,19 +110,15 @@ def _parse_markdown_to_entries(md_text: str, default_source: str) -> list[dict]:
 
     for raw in lines:
         line = raw.rstrip()
-        # Определяем заголовок: начиная с #
         if line.lstrip().startswith("#"):
-            # Считаем уровень
             stripped = line.lstrip()
             i = 0
             while i < len(stripped) and stripped[i] == '#':
                 i += 1
-            level = i  # 1..6
+            level = i
             title = stripped[i:].strip(" #\t")
-            # Сбрасываем предыдущую секцию
             flush_section()
             current_buf = []
-            # Обновляем стек заголовков
             while heading_stack and heading_stack[-1][0] >= level:
                 heading_stack.pop()
             heading_stack.append((level, title))
@@ -142,7 +127,6 @@ def _parse_markdown_to_entries(md_text: str, default_source: str) -> list[dict]:
 
     flush_section()
 
-    # Уберём None из метаданных section
     for e in entries:
         if e.get("section") is None:
             e.pop("section", None)
@@ -166,22 +150,19 @@ def main():
     parser.add_argument("--master-md", type=Path, default=None, help="Markdown-файл для магистратуры (альтернатива JSON)")
     args = parser.parse_args()
 
-    # Настроим ключ для эмбеддингов
     os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
     os.environ["OPENAI_API_BASE"] = OPENAI_API_BASE
 
-    # Бакалавриат
     if args.bachelor_md is not None and args.bachelor_md.exists():
         build_index_from_markdown(args.bachelor_md, args.bachelor_out, default_source="bachelor")
         print(f"✅ Индекс бакалавриата из Markdown сохранён в '{args.bachelor_out}'. Источник: {args.bachelor_md}")
     else:
         if args.bachelor_md is not None and not args.bachelor_md.exists():
-            print(f"⚠️ Markdown для бакалавриата не найден по пути: {args.bachelor_md}. Использую JSON: {args.bachelor}")
+            print(f"⚠️ Markdown для бакалавриата не найден: {args.bachelor_md}. Использую JSON.")
         bachelor_entries = load_json_entries(args.bachelor, default_source="bachelor")
         build_and_save_index(bachelor_entries, args.bachelor_out)
         print(f"✅ Индекс бакалавриата сохранён в '{args.bachelor_out}'. Источник: {args.bachelor}")
 
-    # Магистратура
     if args.master_md is not None:
         build_index_from_markdown(args.master_md, args.master_out, default_source="master")
         print(f"✅ Индекс магистратуры из Markdown сохранён в '{args.master_out}'. Источник: {args.master_md}")

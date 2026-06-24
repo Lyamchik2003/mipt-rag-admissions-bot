@@ -27,10 +27,8 @@ class OpenAISettings:
 class LLMProviderSettings:
     """Настройки поддержки нескольких LLM-провайдеров: OpenAI, GigaChat, YandexGPT."""
     provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "openai"))
-    # GigaChat (Sber)
     gigachat_credentials: str = field(default_factory=lambda: os.getenv("GIGACHAT_CREDENTIALS", ""))
     gigachat_model: str = "GigaChat"
-    # YandexGPT / Alice AI
     yandex_api_key: str = field(default_factory=lambda: os.getenv("YANDEX_API_KEY", ""))
     yandex_folder_id: str = field(default_factory=lambda: os.getenv("YANDEX_FOLDER_ID", ""))
     yandex_model: str = "yandexgpt-lite"

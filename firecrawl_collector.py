@@ -1,17 +1,9 @@
-"""Firecrawl-based collector for university admission data.
+"""Firecrawl collector for university admission data.
 
-Usage example (for quick adaptation to any university):
+Collects clean markdown from a university's admission pages
+for use with setup_rag.py.
 
-    python firecrawl_collector.py \
-        --start-url "https://pk.mipt.ru/" \
-        --name "mipt" \
-        --output-dir "data/mipt_raw"
-
-This crawls admission-related pages, extracts clean markdown,
-and saves structured entries that can be fed into setup_rag.py
-(or used to generate rules/faq JSON).
-
-Requires FIRECRAWL_API_KEY in keys.env or environment.
+Set FIRECRAWL_API_KEY in keys.env.
 """
 
 import argparse
@@ -49,7 +41,6 @@ def discover_relevant_urls(client: Firecrawl, start_url: str, limit: int = 100) 
             search="поступление правила сроки документы экзамены FAQ льготы общежитие"
         )
         urls = result.get("links", []) if isinstance(result, dict) else getattr(result, "links", [])
-        # Filter to likely admission pages
         relevant = []
         for url in urls:
             u = url.lower()
